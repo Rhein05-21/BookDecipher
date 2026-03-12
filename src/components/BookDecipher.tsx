@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { extractTextFromPDF, decipherCoordinate } from '../utils/pdfParser';
-import { Upload, FileText, ChevronRight, AlertCircle, Info, Settings } from 'lucide-react';
+import { Upload, FileText, ChevronRight, AlertCircle, Info, Settings, HelpCircle } from 'lucide-react';
 
 export default function BookDecipher() {
   const [file, setFile] = useState<File | null>(null);
@@ -8,6 +8,7 @@ export default function BookDecipher() {
   const [loading, setLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [useOcr, setUseOcr] = useState(false);
+  const [showOcrHelp, setShowOcrHelp] = useState(false);
   const [usePhysicalPage, setUsePhysicalPage] = useState(false);
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState<any[]>([]);
@@ -103,16 +104,30 @@ export default function BookDecipher() {
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-stone-50 rounded-xl border border-stone-200">
-              <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
-                  checked={useOcr} 
-                  onChange={(e) => setUseOcr(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded border-stone-300 focus:ring-indigo-500"
-                />
-                Use OCR for scanned docs
-              </label>
-              <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none">
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={useOcr} 
+                    onChange={(e) => setUseOcr(e.target.checked)}
+                    className="w-4 h-4 text-indigo-600 rounded border-stone-300 focus:ring-indigo-500"
+                  />
+                  Use OCR for scanned docs
+                  <button 
+                    onClick={() => setShowOcrHelp(!showOcrHelp)}
+                    className="p-1 hover:bg-stone-200 rounded-full transition-colors"
+                    title="What is OCR?"
+                  >
+                    <HelpCircle className="w-4 h-4 text-stone-400" />
+                  </button>
+                </label>
+                {showOcrHelp && (
+                  <div className="text-[10px] md:text-xs text-stone-500 bg-white p-2 rounded-lg border border-stone-100 shadow-sm animate-in fade-in slide-in-from-top-1">
+                    <strong>OCR (Optical Character Recognition)</strong> converts images of text into actual machine-readable text. Use this if your PDF is a <strong>scan or photo</strong> of a book where you cannot highlight the text normally. It is slower than normal mode.
+                  </div>
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none h-fit self-start">
                 <input 
                   type="checkbox" 
                   checked={usePhysicalPage} 
