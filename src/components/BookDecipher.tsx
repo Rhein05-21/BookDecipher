@@ -17,6 +17,11 @@ export default function BookDecipher() {
   const [usePhysicalPage, setUsePhysicalPage] = useState(false);
   const [pdfInput, setPdfInput] = useState('');
   const [pdfResults, setPdfResults] = useState<any[]>([]);
+  const [showManual, setShowManual] = useState<Record<string, boolean>>({});
+
+  const toggleManual = (id: string) => {
+    setShowManual(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Substitution State
   const [subInput, setSubInput] = useState('');
@@ -122,6 +127,32 @@ export default function BookDecipher() {
         {/* --- PDF DECODER TAB --- */}
         {activeTab === 'pdf' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            <button 
+              onClick={() => toggleManual('pdf')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-indigo-400" />
+                <span className="font-bold">Manual Explanation: Coordinate Method</span>
+              </div>
+              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['pdf'] ? 'rotate-90' : ''}`} />
+            </button>
+
+            {showManual['pdf'] && (
+              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
+                <p>To decipher coordinates manually, follow these steps:</p>
+                <ol className="list-decimal list-inside space-y-2 ml-2">
+                  <li><strong>Find the Page:</strong> Look for the <em>printed</em> page number on the document (not the PDF software's page index).</li>
+                  <li><strong>Count the Lines:</strong> Locate the specific line number. We skip empty lines or headers that don't belong to the main text body.</li>
+                  <li><strong>Count the Word:</strong> Count words from left to right. <strong>Crucial:</strong> Skip any isolated numbers or symbols (like "1990" or "1."); only count tokens that contain letters.</li>
+                  <li><strong>Pick the Letter:</strong> The final result is the <strong>first letter</strong> of that target word.</li>
+                </ol>
+                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-700 font-medium italic">
+                  Example: P10, L5, W2 → Page 10, Line 5, 2nd real word.
+                </div>
+              </div>
+            )}
+
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">1. Document Setup</h2>
@@ -211,6 +242,31 @@ export default function BookDecipher() {
         {/* --- SUBSTITUTION TAB --- */}
         {activeTab === 'substitution' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            <button 
+              onClick={() => toggleManual('sub')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Repeat className="w-5 h-5 text-indigo-400" />
+                <span className="font-bold">Manual Explanation: Substitution</span>
+              </div>
+              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['sub'] ? 'rotate-90' : ''}`} />
+            </button>
+
+            {showManual['sub'] && (
+              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
+                <div className="space-y-2">
+                  <h4 className="font-bold text-stone-800 uppercase text-xs">1. Caesar Cipher (Monoalphabetic)</h4>
+                  <p>Shift every letter in the alphabet by a fixed number. If the shift is 3, A becomes D (A+1=B, A+2=C, A+3=D). To decrypt, you simply shift backwards.</p>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-bold text-stone-800 uppercase text-xs">2. Vigenère Cipher (Polyalphabetic)</h4>
+                  <p>Uses a keyword (like "ITALY") to apply different shifts. Align the key over your message. For the first letter, use the first key letter to find the shift amount (A=0, B=1, etc.).</p>
+                  <p className="p-2 bg-stone-50 rounded-lg italic">"S" (Plain) + "I" (Key) → Find intersection of Row I and Column S in the Vigenère Square.</p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -263,6 +319,32 @@ export default function BookDecipher() {
         {/* --- TRANSPOSITION TAB --- */}
         {activeTab === 'transposition' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            <button 
+              onClick={() => toggleManual('trans')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Hash className="w-5 h-5 text-indigo-400" />
+                <span className="font-bold">Manual Explanation: Transposition</span>
+              </div>
+              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['trans'] ? 'rotate-90' : ''}`} />
+            </button>
+
+            {showManual['trans'] && (
+              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
+                <p>Transposition rearranges letters without changing them. To do this manually:</p>
+                <ol className="list-decimal list-inside space-y-2 ml-2">
+                  <li><strong>Define Block Size:</strong> If your key has 4 numbers (e.g., 1, 4, 2, 3), your block size is 4.</li>
+                  <li><strong>Split Text:</strong> Break your message into groups of 4 letters.</li>
+                  <li><strong>Rearrange:</strong> For each group, move the 1st letter to the 1st slot, the 2nd letter to the 4th slot, the 3rd to the 2nd, and the 4th to the 3rd.</li>
+                </ol>
+                <div className="p-3 bg-stone-50 rounded-xl font-mono text-xs">
+                  Example Key [2, 1, 4, 3]: <br/>
+                  "HELP" → "EHPL" (H moved to 2nd, E to 1st, L to 4th, P to 3rd)
+                </div>
+              </div>
+            )}
+
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="space-y-4">
                 <h3 className="font-bold text-stone-700">Permutation Key</h3>
@@ -293,6 +375,34 @@ export default function BookDecipher() {
         {/* --- XOR TAB --- */}
         {activeTab === 'xor' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            <button 
+              onClick={() => toggleManual('xor')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Binary className="w-5 h-5 text-indigo-400" />
+                <span className="font-bold">Manual Explanation: XOR Cipher</span>
+              </div>
+              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['xor'] ? 'rotate-90' : ''}`} />
+            </button>
+
+            {showManual['xor'] && (
+              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
+                <p>XOR (Exclusive OR) is a bitwise comparison. To do this manually:</p>
+                <ol className="list-decimal list-inside space-y-2 ml-2">
+                  <li><strong>Convert to Binary:</strong> Turn your text (e.g., "CAT") into ASCII binary (8 bits per letter).</li>
+                  <li><strong>Repeat Key:</strong> Take your key's binary and repeat it until it is the same length as your message.</li>
+                  <li><strong>Compare Bits:</strong> For every bit, apply the rule:
+                    <ul className="ml-6 mt-1 list-disc opacity-80">
+                      <li>If bits are <strong>different</strong> (0 and 1), result is <strong>1</strong>.</li>
+                      <li>If bits are the <strong>same</strong> (0 and 0, or 1 and 1), result is <strong>0</strong>.</li>
+                    </ul>
+                  </li>
+                  <li><strong>Self-Inverting:</strong> To decrypt, simply XOR the result with the same key again!</li>
+                </ol>
+              </div>
+            )}
+
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="space-y-4">
                 <h3 className="font-bold text-stone-700">XOR Parameters</h3>
