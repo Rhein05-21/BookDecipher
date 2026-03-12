@@ -93,6 +93,7 @@ export default function BookDecipher() {
   const [usePhysicalPage, setUsePhysicalPage] = useState(false);
   const [pdfInput, setPdfInput] = useState('');
   const [pdfResults, setPdfResults] = useState<any[]>([]);
+  const [inputErrors, setInputErrors] = useState<string[]>([]);
 
   // Substitution State
   const [subInput, setSubInput] = useState('');
@@ -127,10 +128,28 @@ export default function BookDecipher() {
       setLoading(false);
       setProgressMsg('');
     }
-  };
+  const [inputErrors, setInputErrors] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!pdfInput.trim()) {
+      setInputErrors([]);
+      return;
+    }
+    const lines = pdfInput.split('\n');
+    const errors: string[] = [];
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      const match = trimmed.match(/P(\d+)\s*,\s*L(\d+)\s*,\s*W(\d+)/i);
+      if (!match) {
+        errors.push(`Line ${idx + 1}: Format must be P[page], L[line], W[word]`);
+      }
+    });
+    setInputErrors(errors);
+  }, [pdfInput]);
 
   const handlePdfDecipher = () => {
-    if (!pageMap) return;
+    if (!pageMap || inputErrors.length > 0) return;
     const lines = pdfInput.split('\n');
     const newResults = lines.map(line => {
       const match = line.match(/P(\d+)\s*,\s*L(\d+)\s*,\s*W(\d+)/i);
@@ -369,16 +388,37 @@ export default function BookDecipher() {
                   <div className="space-y-6">
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-stone-100 space-y-6">
                       <div className="space-y-4">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-stone-400">2. Coordinate Input</h2>
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-sm font-black uppercase tracking-widest text-stone-400">2. Coordinate Input</h2>
+                          {inputErrors.length > 0 && (
+                            <span className="text-[10px] font-black text-red-500 uppercase tracking-tighter bg-red-50 px-2 py-1 rounded-lg border border-red-100 animate-pulse">
+                              {inputErrors.length} Formatting Errors
+                            </span>
+                          )}
+                        </div>
                         <textarea
-                          className="w-full h-48 p-6 bg-stone-50 border border-stone-100 rounded-[2rem] font-mono text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all placeholder:text-stone-300"
+                          className={`w-full h-48 p-6 bg-stone-50 border rounded-[2rem] font-mono text-sm focus:ring-4 outline-none transition-all placeholder:text-stone-300 ${
+                            inputErrors.length > 0 
+                            ? 'border-red-200 focus:ring-red-500/10 focus:border-red-400' 
+                            : 'border-stone-100 focus:ring-indigo-500/10 focus:border-indigo-500'
+                          }`}
                           placeholder="P10, L27, W2&#10;P6, L22, W1"
                           value={pdfInput}
                           onChange={(e) => setPdfInput(e.target.value)}
                         />
+                        {inputErrors.length > 0 && (
+                          <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100 space-y-1">
+                            {inputErrors.slice(0, 3).map((err, i) => (
+                              <p key={i} className="text-[11px] text-red-600 font-bold flex items-center gap-2">
+                                <AlertCircle className="w-3 h-3" /> {err}
+                              </p>
+                            ))}
+                            {inputErrors.length > 3 && <p className="text-[10px] text-red-400 italic">...and {inputErrors.length - 3} more errors</p>}
+                          </div>
+                        )}
                         <button
                           onClick={handlePdfDecipher}
-                          disabled={!pageMap || !pdfInput.trim()}
+                          disabled={!pageMap || !pdfInput.trim() || inputErrors.length > 0}
                           className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 active:scale-[0.98] transition-all"
                         >
                           Decipher Message
