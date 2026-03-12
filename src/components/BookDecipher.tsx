@@ -318,10 +318,14 @@ export default function BookDecipher() {
                   <div className="p-4 bg-stone-900 text-stone-100 rounded-xl border border-stone-800 shadow-xl overflow-hidden">
                     <h4 className="text-[10px] font-bold text-stone-400 uppercase mb-2">Binary Bitstream</h4>
                     <p className="text-xs font-mono break-all leading-relaxed opacity-80">{ciphers.xorCipher(xorInput, xorKey).binary}</p>
+                    <h4 className="text-[10px] font-bold text-stone-400 uppercase mt-4 mb-2">Hexadecimal View</h4>
+                    <p className="text-xs font-mono break-all leading-relaxed opacity-80">{ciphers.xorCipher(xorInput, xorKey).hex}</p>
                   </div>
                   <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                     <h4 className="text-[10px] font-bold text-emerald-700 uppercase mb-1">XOR Result (Text/ASCII)</h4>
-                    <p className="text-lg font-bold text-emerald-900 break-all font-mono italic">"{ciphers.xorCipher(xorInput, xorKey).text}"</p>
+                    <p className="text-lg font-bold text-emerald-900 break-all font-mono italic">
+                      {ciphers.xorCipher(xorInput, xorKey).text || <span className="text-stone-400 font-normal text-sm">(Non-printable result)</span>}
+                    </p>
                   </div>
                 </div>
               )}

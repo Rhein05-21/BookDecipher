@@ -74,23 +74,26 @@ export function transpositionCipher(text: string, keyPattern: string): string {
 
 // --- XOR Cipher ---
 
-export function xorCipher(text: string, key: string): { binary: string, text: string } {
-  if (!key) return { binary: '', text: '' };
+export function xorCipher(text: string, key: string): { binary: string, text: string, hex: string } {
+  if (!key) return { binary: '', text: '', hex: '' };
   
   const textBytes = new TextEncoder().encode(text);
   const keyBytes = new TextEncoder().encode(key);
   
   const resultBytes = new Uint8Array(textBytes.length);
   let binaryResult = '';
+  let hexResult = '';
 
   for (let i = 0; i < textBytes.length; i++) {
     const xored = textBytes[i] ^ keyBytes[i % keyBytes.length];
     resultBytes[i] = xored;
     binaryResult += xored.toString(2).padStart(8, '0') + ' ';
+    hexResult += xored.toString(16).padStart(2, '0').toUpperCase() + ' ';
   }
 
   return {
     binary: binaryResult.trim(),
-    text: new TextDecoder().decode(resultBytes)
+    text: new TextDecoder().decode(resultBytes),
+    hex: hexResult.trim()
   };
 }
