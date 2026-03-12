@@ -128,6 +128,8 @@ export default function BookDecipher() {
       setLoading(false);
       setProgressMsg('');
     }
+  };
+
   const [inputErrors, setInputErrors] = useState<string[]>([]);
 
   useEffect(() => {
