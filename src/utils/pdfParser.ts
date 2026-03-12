@@ -34,50 +34,59 @@ export async function extractTextFromPDF(
       const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
       lines = text.split('\n').map(l => l.trim()).filter(l => l !== '');
     } else {
-      const textContent = await page.getTextContent();
-      const items = textContent.items as any[];
-      
-      // Sort items by Y (descending) and X (ascending)
-      items.sort((a, b) => {
-        const yA = a.transform[5];
-        const yB = b.transform[5];
-        if (Math.abs(yA - yB) > 5) {
-          return yB - yA;
-        }
-        return a.transform[4] - b.transform[4];
-      });
-
-      let currentLineStr = '';
-      let lastY: number | null = null;
-      let lastX: number | null = null;
-      let lastWidth: number | null = null;
-
-      for (const item of items) {
-        const y = item.transform[5];
-        const x = item.transform[4];
-        const width = item.width;
+      try {
+        const textContent = await page.getTextContent();
+        const items = textContent.items as any[];
         
-        if (lastY === null || Math.abs(lastY - y) > 5) {
-          if (currentLineStr.trim() !== '') {
-            lines.push(currentLineStr.trim());
-          }
-          currentLineStr = item.str;
-          lastY = y;
-          lastX = x;
-          lastWidth = width;
-        } else {
-          const gap = x - (lastX! + lastWidth!);
-          if (gap > 2) {
-            currentLineStr += ' ' + item.str;
-          } else {
-            currentLineStr += item.str;
-          }
-          lastX = x;
-          lastWidth = width;
+        if (items.length === 0) {
+          throw new Error('No text items found on page');
         }
-      }
-      if (currentLineStr.trim() !== '') {
-        lines.push(currentLineStr.trim());
+
+        // Sort items by Y (descending) and X (ascending)
+        items.sort((a, b) => {
+          const yA = a.transform[5];
+          const yB = b.transform[5];
+          if (Math.abs(yA - yB) > 5) {
+            return yB - yA;
+          }
+          return a.transform[4] - b.transform[4];
+        });
+
+        let currentLineStr = '';
+        let lastY: number | null = null;
+        let lastX: number | null = null;
+        let lastWidth: number | null = null;
+
+        for (const item of items) {
+          const y = item.transform[5];
+          const x = item.transform[4];
+          const width = item.width;
+          
+          if (lastY === null || Math.abs(lastY - y) > 5) {
+            if (currentLineStr.trim() !== '') {
+              lines.push(currentLineStr.trim());
+            }
+            currentLineStr = item.str;
+            lastY = y;
+            lastX = x;
+            lastWidth = width;
+          } else {
+            const gap = x - (lastX! + lastWidth!);
+            if (gap > 2) {
+              currentLineStr += ' ' + item.str;
+            } else {
+              currentLineStr += item.str;
+            }
+            lastX = x;
+            lastWidth = width;
+          }
+        }
+        if (currentLineStr.trim() !== '') {
+          lines.push(currentLineStr.trim());
+        }
+      } catch (err) {
+        console.error(`Page ${i} extraction failed:`, err);
+        throw new Error(`Failed to extract text from page ${i}. This PDF might have complex fonts or be an image. Please try enabling OCR Mode.`);
       }
 
       // Filter empty lines

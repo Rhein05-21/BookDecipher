@@ -121,16 +121,14 @@ export default function BookDecipher() {
         setProgressMsg(msg);
       });
       setPageMap(map);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error extracting text from PDF');
+      alert(error.message || 'Error extracting text from PDF');
     } finally {
       setLoading(false);
       setProgressMsg('');
     }
   };
-
-  const [inputErrors, setInputErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (!pdfInput.trim()) {
