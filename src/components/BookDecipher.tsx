@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { extractTextFromPDF, decipherCoordinate } from '../utils/pdfParser';
-import { Upload, FileText, ChevronRight, AlertCircle, Info, Settings, HelpCircle } from 'lucide-react';
+import { Upload, FileText, ChevronRight, AlertCircle, Info, Settings, HelpCircle, Repeat } from 'lucide-react';
 
 export default function BookDecipher() {
   const [file, setFile] = useState<File | null>(null);
@@ -12,6 +12,20 @@ export default function BookDecipher() {
   const [usePhysicalPage, setUsePhysicalPage] = useState(false);
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [substitutionText, setSubstitutionText] = useState('');
+  const [shiftAmount, setShiftAmount] = useState(3);
+
+  const handleSubstitution = (text: string, shift: number) => {
+    return text.split('').map(char => {
+      if (char.match(/[a-z]/i)) {
+        const code = char.charCodeAt(0);
+        const base = code >= 65 && code <= 90 ? 65 : 97;
+        // Handle positive and negative shifts
+        return String.fromCharCode(((code - base + shift + 26) % 26) + base);
+      }
+      return char;
+    }).join('');
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -180,6 +194,48 @@ export default function BookDecipher() {
             >
               Decipher Message
             </button>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Repeat className="w-5 h-5 text-indigo-500" />
+              Substitution Cipher
+            </h2>
+            <div className="bg-stone-50 p-4 rounded-xl text-sm border border-stone-100 space-y-3">
+              <p className="text-stone-600 leading-relaxed">
+                A substitution cipher replaces each letter with another. Use this to shift letters by a fixed amount (e.g., Shift 3: A→D, MOM→PRP).
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-stone-500 uppercase">Shift Amount:</span>
+                  <input 
+                    type="number" 
+                    value={shiftAmount} 
+                    onChange={(e) => setShiftAmount(parseInt(e.target.value, 10) || 0)}
+                    className="w-16 p-1 border border-stone-200 rounded text-center font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div className="text-xs text-indigo-600 font-medium">
+                  Sample: A → {handleSubstitution('A', shiftAmount)}
+                </div>
+              </div>
+            </div>
+            <textarea
+              className="w-full h-24 p-4 border border-stone-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono text-sm resize-none"
+              placeholder="Paste text here to shift letters..."
+              value={substitutionText}
+              onChange={(e) => setSubstitutionText(e.target.value)}
+            />
+            {substitutionText && (
+              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-1">Shifted Result</h3>
+                <p className="text-xl font-bold text-emerald-900 break-all font-mono">
+                  {handleSubstitution(substitutionText, shiftAmount)}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
