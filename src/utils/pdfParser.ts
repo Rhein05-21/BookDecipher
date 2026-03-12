@@ -8,6 +8,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 export async function extractTextFromPDF(
   file: File,
   useOcr: boolean = false,
+  usePhysicalPage: boolean = false,
   onProgress?: (msg: string) => void
 ): Promise<Record<string, string[]>> {
   const arrayBuffer = await file.arrayBuffer();
@@ -83,40 +84,41 @@ export async function extractTextFromPDF(
       lines = lines.filter(l => l.trim() !== '');
     }
 
-    // Identify printed page number
-    let printedPageNum: string | null = null;
-    if (lines.length > 0) {
-      const firstLine = lines[0].trim();
-      const lastLine = lines[lines.length - 1].trim();
-      
-      const isPageNum = (str: string) => {
-        // Match just a number, or "Page X", "X", "- X -", "[X]", "(X)", "| X |"
-        // We want to avoid matching years or random numbers if possible, 
-        // but if it's the ONLY thing on the first/last line, it's highly likely a page number.
-        const match = str.match(/^(?:page\s*|p\.?\s*|[\[(|-]\s*)?(\d+)(?:\s*[\])|-])?$/i);
-        if (match) {
-          return match[1];
-        }
-        return null;
-      };
-
-      const firstMatch = isPageNum(firstLine);
-      const lastMatch = isPageNum(lastLine);
-
-      if (firstMatch) {
-        printedPageNum = firstMatch;
-        lines.shift(); // remove it
-      } else if (lastMatch) {
-        printedPageNum = lastMatch;
-        lines.pop(); // remove it
-      }
-    }
-
-    if (printedPageNum !== null) {
-      pageMap[printedPageNum] = lines;
+    if (usePhysicalPage) {
+      pageMap[i.toString()] = lines;
     } else {
-      // Fallback
-      pageMap[`pdf_${i}`] = lines; 
+      // Identify printed page number
+      let printedPageNum: string | null = null;
+      if (lines.length > 0) {
+        const firstLine = lines[0].trim();
+        const lastLine = lines[lines.length - 1].trim();
+        
+        const isPageNum = (str: string) => {
+          const match = str.match(/^(?:page\s*|p\.?\s*|[\[(|-]\s*)?(\d+)(?:\s*[\])|-])?$/i);
+          if (match) {
+            return match[1];
+          }
+          return null;
+        };
+
+        const firstMatch = isPageNum(firstLine);
+        const lastMatch = isPageNum(lastLine);
+
+        if (firstMatch) {
+          printedPageNum = firstMatch;
+          lines.shift(); // remove it
+        } else if (lastMatch) {
+          printedPageNum = lastMatch;
+          lines.pop(); // remove it
+        }
+      }
+
+      if (printedPageNum !== null) {
+        pageMap[printedPageNum] = lines;
+      } else {
+        // Fallback to physical if detection fails
+        pageMap[i.toString()] = lines; 
+      }
     }
   }
   return pageMap;

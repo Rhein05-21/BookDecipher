@@ -8,6 +8,7 @@ export default function BookDecipher() {
   const [loading, setLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [useOcr, setUseOcr] = useState(false);
+  const [usePhysicalPage, setUsePhysicalPage] = useState(false);
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState<any[]>([]);
 
@@ -18,7 +19,7 @@ export default function BookDecipher() {
     setLoading(true);
     setProgressMsg('Initializing...');
     try {
-      const map = await extractTextFromPDF(selectedFile, useOcr, (msg) => {
+      const map = await extractTextFromPDF(selectedFile, useOcr, usePhysicalPage, (msg) => {
         setProgressMsg(msg);
       });
       setPageMap(map);
@@ -91,14 +92,17 @@ export default function BookDecipher() {
             </h2>
             <div className="bg-blue-50 text-blue-800 p-3 md:p-4 rounded-xl text-sm flex gap-3 items-start">
               <Info className="w-5 h-5 shrink-0 mt-0.5" />
-              <p>
-                The app uses the <strong>printed page number</strong> on the module. 
-                It skips numbers (like "1990") when counting words for accuracy.
-              </p>
+              <div className="space-y-1">
+                <p>
+                  <strong>Page Counting:</strong> {usePhysicalPage ? 'Using literal PDF page count (1, 2, 3...)' : 'Using printed page numbers found on the document.'}
+                </p>
+                <p>
+                  Numbers (like "1990") are skipped when counting words to ensure accuracy.
+                </p>
+              </div>
             </div>
             
-            <div className="flex items-center gap-2 p-3 bg-stone-50 rounded-xl border border-stone-200">
-              <Settings className="w-5 h-5 text-stone-500" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-stone-50 rounded-xl border border-stone-200">
               <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none">
                 <input 
                   type="checkbox" 
@@ -106,7 +110,16 @@ export default function BookDecipher() {
                   onChange={(e) => setUseOcr(e.target.checked)}
                   className="w-4 h-4 text-indigo-600 rounded border-stone-300 focus:ring-indigo-500"
                 />
-                Use OCR for scanned documents
+                Use OCR for scanned docs
+              </label>
+              <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={usePhysicalPage} 
+                  onChange={(e) => setUsePhysicalPage(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded border-stone-300 focus:ring-indigo-500"
+                />
+                Use literal PDF page count
               </label>
             </div>
 
