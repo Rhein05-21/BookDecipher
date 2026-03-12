@@ -1,11 +1,39 @@
 import React, { useState } from 'react';
 import { extractTextFromPDF, decipherCoordinate } from '../utils/pdfParser';
 import * as ciphers from '../utils/cipherUtils';
-import { Upload, FileText, ChevronRight, AlertCircle, Info, Settings, HelpCircle, Repeat, Hash, Binary, RefreshCcw } from 'lucide-react';
+import { Upload, FileText, ChevronRight, AlertCircle, Info, Settings, HelpCircle, Repeat, Hash, Binary, RefreshCcw, X } from 'lucide-react';
+
+const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 border-b border-stone-100">
+          <h3 className="font-bold text-lg text-stone-800">{title}</h3>
+          <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full transition-colors active:scale-95">
+            <X className="w-6 h-6 text-stone-400" />
+          </button>
+        </div>
+        <div className="p-6 max-h-[70vh] overflow-y-auto text-stone-600 leading-relaxed">
+          {children}
+        </div>
+        <div className="p-4 bg-stone-50 border-t border-stone-100 flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2 bg-stone-800 text-white rounded-xl font-bold hover:bg-stone-700 transition-colors"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function BookDecipher() {
   // Common State
   const [activeTab, setActiveTab] = useState<'pdf' | 'substitution' | 'transposition' | 'xor'>('pdf');
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // PDF Tool State
   const [file, setFile] = useState<File | null>(null);
@@ -17,11 +45,6 @@ export default function BookDecipher() {
   const [usePhysicalPage, setUsePhysicalPage] = useState(false);
   const [pdfInput, setPdfInput] = useState('');
   const [pdfResults, setPdfResults] = useState<any[]>([]);
-  const [showManual, setShowManual] = useState<Record<string, boolean>>({});
-
-  const toggleManual = (id: string) => {
-    setShowManual(prev => ({ ...prev, [id]: !prev[id] }));
-  };
 
   // Substitution State
   const [subInput, setSubInput] = useState('');
@@ -91,6 +114,57 @@ export default function BookDecipher() {
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 p-4 md:p-8 font-sans">
+      {/* MODALS */}
+      <Modal isOpen={activeModal === 'pdf'} onClose={() => setActiveModal(null)} title="Coordinate Decoding Guide">
+        <p className="mb-4">Follow these steps to decipher coordinates manually:</p>
+        <ol className="list-decimal list-inside space-y-3 ml-2">
+          <li><strong>Find the Page:</strong> Look for the <em>printed</em> page number on the document.</li>
+          <li><strong>Count the Lines:</strong> Locate the specific line number from the top.</li>
+          <li><strong>Count the Word:</strong> Count words from left to right. <strong>Crucial:</strong> Skip isolated numbers or symbols (like "1990"); only count tokens containing letters.</li>
+          <li><strong>Pick the Letter:</strong> Use the <strong>first letter</strong> of that target word.</li>
+        </ol>
+        <div className="mt-6 p-4 bg-indigo-50 rounded-2xl text-indigo-700 font-medium italic text-sm">
+          Example: P10, L5, W2 → Page 10, Line 5, 2nd real word.
+        </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'sub'} onClose={() => setActiveModal(null)} title="Substitution Logic">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h4 className="font-bold text-stone-800 uppercase text-xs tracking-wider">1. Caesar Cipher (Monoalphabetic)</h4>
+            <p className="text-sm">Shift every letter by a fixed number. If shift is 3, A becomes D (A→B, B→C, C→D). Simple but easy to crack with frequency analysis.</p>
+          </div>
+          <div className="space-y-2 border-t border-stone-100 pt-4">
+            <h4 className="font-bold text-stone-800 uppercase text-xs tracking-wider">2. Vigenère Cipher (Polyalphabetic)</h4>
+            <p className="text-sm">Stronger because it uses multiple shifts. You align a keyword over your message. Each key letter determines the shift for that position.</p>
+            <p className="p-3 bg-stone-50 rounded-xl italic text-xs">"PLAIN" + "KEY" → Intersection in Vigenère Square.</p>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'trans'} onClose={() => setActiveModal(null)} title="Transposition Guide">
+        <p className="mb-4">Transposition rearranges positions without changing the letters themselves.</p>
+        <ol className="list-decimal list-inside space-y-3 ml-2">
+          <li><strong>Block Size:</strong> Determined by the number of digits in your key.</li>
+          <li><strong>Grouping:</strong> Break your message into blocks of that size.</li>
+          <li><strong>Permute:</strong> Move letters to the positions defined by the key.</li>
+        </ol>
+        <div className="mt-6 p-4 bg-amber-50 rounded-2xl font-mono text-xs border border-amber-100">
+          Example Key [2, 1, 4, 3]: <br/>
+          "HELP" → "EHPL" (H moved to 2nd position, E to 1st, etc.)
+        </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'xor'} onClose={() => setActiveModal(null)} title="Bitwise XOR Method">
+        <p className="mb-4">A Boolean function that compares two bits.</p>
+        <ol className="list-decimal list-inside space-y-3 ml-2">
+          <li><strong>Rule:</strong> Output <strong>1</strong> if bits are different, <strong>0</strong> if same.</li>
+          <li><strong>Binary:</strong> Convert your text and key into 8-bit binary streams.</li>
+          <li><strong>XOR:</strong> Apply the rule to each bit pair.</li>
+          <li><strong>Security:</strong> XORing twice with the same key returns the original data.</li>
+        </ol>
+      </Modal>
+
       <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
         <header className="text-center space-y-2">
           <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-4 flex items-center justify-center gap-2 text-amber-800 text-xs md:text-sm font-medium">
@@ -128,30 +202,17 @@ export default function BookDecipher() {
         {activeTab === 'pdf' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <button 
-              onClick={() => toggleManual('pdf')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+              onClick={() => setActiveModal('pdf')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5 text-indigo-400" />
+                <div className="bg-indigo-500 p-1.5 rounded-lg">
+                  <FileText className="w-5 h-5 text-white" />
+                </div>
                 <span className="font-bold">Manual Explanation: Coordinate Method</span>
               </div>
-              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['pdf'] ? 'rotate-90' : ''}`} />
+              <ChevronRight className="w-5 h-5 opacity-50" />
             </button>
-
-            {showManual['pdf'] && (
-              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
-                <p>To decipher coordinates manually, follow these steps:</p>
-                <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li><strong>Find the Page:</strong> Look for the <em>printed</em> page number on the document (not the PDF software's page index).</li>
-                  <li><strong>Count the Lines:</strong> Locate the specific line number. We skip empty lines or headers that don't belong to the main text body.</li>
-                  <li><strong>Count the Word:</strong> Count words from left to right. <strong>Crucial:</strong> Skip any isolated numbers or symbols (like "1990" or "1."); only count tokens that contain letters.</li>
-                  <li><strong>Pick the Letter:</strong> The final result is the <strong>first letter</strong> of that target word.</li>
-                </ol>
-                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-700 font-medium italic">
-                  Example: P10, L5, W2 → Page 10, Line 5, 2nd real word.
-                </div>
-              </div>
-            )}
 
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="space-y-4">
@@ -243,29 +304,17 @@ export default function BookDecipher() {
         {activeTab === 'substitution' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <button 
-              onClick={() => toggleManual('sub')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+              onClick={() => setActiveModal('sub')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
-                <Repeat className="w-5 h-5 text-indigo-400" />
+                <div className="bg-indigo-500 p-1.5 rounded-lg">
+                  <Repeat className="w-5 h-5 text-white" />
+                </div>
                 <span className="font-bold">Manual Explanation: Substitution</span>
               </div>
-              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['sub'] ? 'rotate-90' : ''}`} />
+              <ChevronRight className="w-5 h-5 opacity-50" />
             </button>
-
-            {showManual['sub'] && (
-              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
-                <div className="space-y-2">
-                  <h4 className="font-bold text-stone-800 uppercase text-xs">1. Caesar Cipher (Monoalphabetic)</h4>
-                  <p>Shift every letter in the alphabet by a fixed number. If the shift is 3, A becomes D (A+1=B, A+2=C, A+3=D). To decrypt, you simply shift backwards.</p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-bold text-stone-800 uppercase text-xs">2. Vigenère Cipher (Polyalphabetic)</h4>
-                  <p>Uses a keyword (like "ITALY") to apply different shifts. Align the key over your message. For the first letter, use the first key letter to find the shift amount (A=0, B=1, etc.).</p>
-                  <p className="p-2 bg-stone-50 rounded-lg italic">"S" (Plain) + "I" (Key) → Find intersection of Row I and Column S in the Vigenère Square.</p>
-                </div>
-              </div>
-            )}
 
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -320,43 +369,30 @@ export default function BookDecipher() {
         {activeTab === 'transposition' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <button 
-              onClick={() => toggleManual('trans')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+              onClick={() => setActiveModal('trans')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
-                <Hash className="w-5 h-5 text-indigo-400" />
+                <div className="bg-indigo-500 p-1.5 rounded-lg">
+                  <Hash className="w-5 h-5 text-white" />
+                </div>
                 <span className="font-bold">Manual Explanation: Transposition</span>
               </div>
-              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['trans'] ? 'rotate-90' : ''}`} />
+              <ChevronRight className="w-5 h-5 opacity-50" />
             </button>
-
-            {showManual['trans'] && (
-              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
-                <p>Transposition rearranges letters without changing them. To do this manually:</p>
-                <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li><strong>Define Block Size:</strong> If your key has 4 numbers (e.g., 1, 4, 2, 3), your block size is 4.</li>
-                  <li><strong>Split Text:</strong> Break your message into groups of 4 letters.</li>
-                  <li><strong>Rearrange:</strong> For each group, move the 1st letter to the 1st slot, the 2nd letter to the 4th slot, the 3rd to the 2nd, and the 4th to the 3rd.</li>
-                </ol>
-                <div className="p-3 bg-stone-50 rounded-xl font-mono text-xs">
-                  Example Key [2, 1, 4, 3]: <br/>
-                  "HELP" → "EHPL" (H moved to 2nd, E to 1st, L to 4th, P to 3rd)
-                </div>
-              </div>
-            )}
 
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="space-y-4">
                 <h3 className="font-bold text-stone-700">Permutation Key</h3>
                 <div className="bg-stone-50 p-4 rounded-xl text-sm border border-stone-100 space-y-2">
-                  <p className="text-stone-600 italic leading-relaxed">Arranges positions within blocks. Example: "2, 1, 4, 3" swaps every two letters.</p>
-                  <input type="text" value={transKey} onChange={(e) => setTransKey(e.target.value)} className="w-full p-2 border rounded font-mono text-sm" placeholder="e.g. 1, 4, 2, 8, 3, 5, 7, 6" />
+                  <p className="text-stone-600 italic leading-relaxed text-xs">Arranges positions within blocks. Example: "2, 1, 4, 3" swaps every two letters.</p>
+                  <input type="text" value={transKey} onChange={(e) => setTransKey(e.target.value)} className="w-full p-3 border rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 1, 4, 2, 8, 3, 5, 7, 6" />
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 pt-2">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-stone-400">Input Text</h2>
                 <textarea
-                  className="w-full h-32 p-4 border border-stone-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500"
+                  className="w-full h-32 p-4 border border-stone-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="Enter text to scramble..."
                   value={transInput}
                   onChange={(e) => setTransInput(e.target.value)}
@@ -364,8 +400,8 @@ export default function BookDecipher() {
               </div>
               {transInput && (
                 <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                  <h4 className="text-[10px] font-bold text-amber-700 uppercase mb-1">Transposed Result</h4>
-                  <p className="text-lg font-bold text-amber-900 break-all font-mono whitespace-pre">{ciphers.transpositionCipher(transInput, transKey)}</p>
+                  <h4 className="text-[10px] font-bold text-amber-700 uppercase mb-1 tracking-widest">Transposed Result</h4>
+                  <p className="text-lg font-bold text-amber-900 break-all font-mono whitespace-pre leading-relaxed">{ciphers.transpositionCipher(transInput, transKey)}</p>
                 </div>
               )}
             </div>
@@ -376,32 +412,17 @@ export default function BookDecipher() {
         {activeTab === 'xor' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
             <button 
-              onClick={() => toggleManual('xor')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors"
+              onClick={() => setActiveModal('xor')}
+              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
-                <Binary className="w-5 h-5 text-indigo-400" />
+                <div className="bg-indigo-500 p-1.5 rounded-lg">
+                  <Binary className="w-5 h-5 text-white" />
+                </div>
                 <span className="font-bold">Manual Explanation: XOR Cipher</span>
               </div>
-              <ChevronRight className={`w-5 h-5 transition-transform ${showManual['xor'] ? 'rotate-90' : ''}`} />
+              <ChevronRight className="w-5 h-5 opacity-50" />
             </button>
-
-            {showManual['xor'] && (
-              <div className="p-6 bg-white rounded-2xl border border-stone-200 shadow-sm space-y-4 text-sm text-stone-600 leading-relaxed animate-in fade-in zoom-in-95">
-                <p>XOR (Exclusive OR) is a bitwise comparison. To do this manually:</p>
-                <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li><strong>Convert to Binary:</strong> Turn your text (e.g., "CAT") into ASCII binary (8 bits per letter).</li>
-                  <li><strong>Repeat Key:</strong> Take your key's binary and repeat it until it is the same length as your message.</li>
-                  <li><strong>Compare Bits:</strong> For every bit, apply the rule:
-                    <ul className="ml-6 mt-1 list-disc opacity-80">
-                      <li>If bits are <strong>different</strong> (0 and 1), result is <strong>1</strong>.</li>
-                      <li>If bits are the <strong>same</strong> (0 and 0, or 1 and 1), result is <strong>0</strong>.</li>
-                    </ul>
-                  </li>
-                  <li><strong>Self-Inverting:</strong> To decrypt, simply XOR the result with the same key again!</li>
-                </ol>
-              </div>
-            )}
 
             <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
               <div className="space-y-4">
@@ -409,15 +430,15 @@ export default function BookDecipher() {
                 <div className="bg-stone-50 p-4 rounded-xl text-sm border border-stone-100 space-y-3">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-stone-500 uppercase shrink-0">Key (String):</span>
-                    <input type="text" value={xorKey} onChange={(e) => setXorKey(e.target.value)} className="w-full p-2 border rounded font-mono text-sm" />
+                    <input type="text" value={xorKey} onChange={(e) => setXorKey(e.target.value)} className="w-full p-3 border rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
                   </div>
                   <p className="text-xs text-stone-500 leading-relaxed italic">Compares bits: 1 if different, 0 if same. XORing twice with the same key recovers original text.</p>
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 pt-2">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-stone-400">Input Text</h2>
                 <textarea
-                  className="w-full h-32 p-4 border border-stone-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500"
+                  className="w-full h-32 p-4 border border-stone-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                   placeholder="Enter message..."
                   value={xorInput}
                   onChange={(e) => setXorInput(e.target.value)}
@@ -425,15 +446,15 @@ export default function BookDecipher() {
               </div>
               {xorInput && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-stone-900 text-stone-100 rounded-xl border border-stone-800 shadow-xl overflow-hidden">
-                    <h4 className="text-[10px] font-bold text-stone-400 uppercase mb-2">Binary Bitstream</h4>
+                  <div className="p-5 bg-stone-900 text-stone-100 rounded-2xl border border-stone-800 shadow-xl overflow-hidden">
+                    <h4 className="text-[10px] font-bold text-stone-400 uppercase mb-2 tracking-widest">Binary Bitstream</h4>
                     <p className="text-xs font-mono break-all leading-relaxed opacity-80">{ciphers.xorCipher(xorInput, xorKey).binary}</p>
-                    <h4 className="text-[10px] font-bold text-stone-400 uppercase mt-4 mb-2">Hexadecimal View</h4>
+                    <h4 className="text-[10px] font-bold text-stone-400 uppercase mt-5 mb-2 tracking-widest">Hexadecimal View</h4>
                     <p className="text-xs font-mono break-all leading-relaxed opacity-80">{ciphers.xorCipher(xorInput, xorKey).hex}</p>
                   </div>
-                  <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <h4 className="text-[10px] font-bold text-emerald-700 uppercase mb-1">XOR Result (Text/ASCII)</h4>
-                    <p className="text-lg font-bold text-emerald-900 break-all font-mono italic">
+                  <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-100">
+                    <h4 className="text-[10px] font-bold text-emerald-700 uppercase mb-1 tracking-widest">XOR Result (Text/ASCII)</h4>
+                    <p className="text-xl font-bold text-emerald-900 break-all font-mono italic">
                       {ciphers.xorCipher(xorInput, xorKey).text || <span className="text-stone-400 font-normal text-sm">(Non-printable result)</span>}
                     </p>
                   </div>
