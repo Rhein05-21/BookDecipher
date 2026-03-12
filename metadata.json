@@ -1,0 +1,5 @@
+{
+  "name": "Book Decipher",
+  "description": "A web app to decipher hidden messages from a book or module using page, line, and word coordinates. It uses the printed page number and skips numbers when counting words.",
+  "requestFramePermissions": []
+}
