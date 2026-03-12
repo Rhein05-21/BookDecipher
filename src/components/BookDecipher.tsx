@@ -1,32 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { extractTextFromPDF, decipherCoordinate } from '../utils/pdfParser';
 import * as ciphers from '../utils/cipherUtils';
-import { Upload, FileText, ChevronRight, AlertCircle, Info, Settings, HelpCircle, Repeat, Hash, Binary, RefreshCcw, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Upload, FileText, ChevronRight, AlertCircle, Info, Settings, 
+  HelpCircle, Repeat, Hash, Binary, RefreshCcw, X, Copy, Check, ShieldAlert
+} from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
-  if (!isOpen) return null;
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-5 border-b border-stone-100">
-          <h3 className="font-bold text-lg text-stone-800">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full transition-colors active:scale-95">
-            <X className="w-6 h-6 text-stone-400" />
-          </button>
-        </div>
-        <div className="p-6 max-h-[70vh] overflow-y-auto text-stone-600 leading-relaxed">
-          {children}
-        </div>
-        <div className="p-4 bg-stone-50 border-t border-stone-100 flex justify-end">
-          <button 
+    <button 
+      onClick={handleCopy}
+      className="p-2 hover:bg-stone-200/50 rounded-lg transition-all active:scale-90 flex items-center gap-2 text-stone-500"
+      title="Copy to clipboard"
+    >
+      {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+      {copied && <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Copied</span>}
+    </button>
+  );
+};
+
+const Modal = ({ isOpen, onClose, title, icon: Icon, children }: { isOpen: boolean, onClose: () => void, title: string, icon: any, children: React.ReactNode }) => {
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+  }, [isOpen]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="px-6 py-2 bg-stone-800 text-white rounded-xl font-bold hover:bg-stone-700 transition-colors"
+            className="absolute inset-0 bg-stone-900/40 backdrop-blur-md" 
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20"
           >
-            Got it
-          </button>
+            <div className="flex items-center justify-between p-6 border-b border-stone-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-stone-100 rounded-xl">
+                  <Icon className="w-5 h-5 text-stone-600" />
+                </div>
+                <h3 className="font-bold text-xl text-stone-800 tracking-tight">{title}</h3>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full transition-colors active:scale-90">
+                <X className="w-6 h-6 text-stone-400" />
+              </button>
+            </div>
+            <div className="p-8 max-h-[60vh] overflow-y-auto text-stone-600 leading-relaxed text-base">
+              {children}
+            </div>
+            <div className="p-6 bg-stone-50/50 border-t border-stone-50 flex justify-end">
+              <button 
+                onClick={onClose}
+                className="px-8 py-3 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all shadow-lg active:scale-95"
+              >
+                Understood
+              </button>
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -113,356 +161,478 @@ export default function BookDecipher() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-[#F9F8F6] text-stone-900 p-4 md:p-12 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       {/* MODALS */}
-      <Modal isOpen={activeModal === 'pdf'} onClose={() => setActiveModal(null)} title="Coordinate Decoding Guide">
-        <p className="mb-4">Follow these steps to decipher coordinates manually:</p>
-        <ol className="list-decimal list-inside space-y-3 ml-2">
-          <li><strong>Find the Page:</strong> Look for the <em>printed</em> page number on the document.</li>
-          <li><strong>Count the Lines:</strong> Locate the specific line number from the top.</li>
-          <li><strong>Count the Word:</strong> Count words from left to right. <strong>Crucial:</strong> Skip isolated numbers or symbols (like "1990"); only count tokens containing letters.</li>
-          <li><strong>Pick the Letter:</strong> Use the <strong>first letter</strong> of that target word.</li>
-        </ol>
-        <div className="mt-6 p-4 bg-indigo-50 rounded-2xl text-indigo-700 font-medium italic text-sm">
-          Example: P10, L5, W2 → Page 10, Line 5, 2nd real word.
-        </div>
-      </Modal>
-
-      <Modal isOpen={activeModal === 'sub'} onClose={() => setActiveModal(null)} title="Substitution Logic">
+      <Modal isOpen={activeModal === 'pdf'} onClose={() => setActiveModal(null)} title="Coordinate Decoding" icon={FileText}>
+        <p className="mb-6 text-lg">Master the art of manual book deciphering:</p>
         <div className="space-y-6">
-          <div className="space-y-2">
-            <h4 className="font-bold text-stone-800 uppercase text-xs tracking-wider">1. Caesar Cipher (Monoalphabetic)</h4>
-            <p className="text-sm">Shift every letter by a fixed number. If shift is 3, A becomes D (A→B, B→C, C→D). Simple but easy to crack with frequency analysis.</p>
+          <div className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0 font-bold text-stone-500">1</div>
+            <div>
+              <h5 className="font-bold text-stone-800">Identify the Page</h5>
+              <p className="text-sm">Find the number physically printed on the page corner.</p>
+            </div>
           </div>
-          <div className="space-y-2 border-t border-stone-100 pt-4">
-            <h4 className="font-bold text-stone-800 uppercase text-xs tracking-wider">2. Vigenère Cipher (Polyalphabetic)</h4>
-            <p className="text-sm">Stronger because it uses multiple shifts. You align a keyword over your message. Each key letter determines the shift for that position.</p>
-            <p className="p-3 bg-stone-50 rounded-xl italic text-xs">"PLAIN" + "KEY" → Intersection in Vigenère Square.</p>
+          <div className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0 font-bold text-stone-500">2</div>
+            <div>
+              <h5 className="font-bold text-stone-800">Locate the Line</h5>
+              <p className="text-sm">Count lines from top to bottom, skipping empty gaps or headers.</p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0 font-bold text-stone-500">3</div>
+            <div>
+              <h5 className="font-bold text-stone-800">Pinpoint the Word</h5>
+              <p className="text-sm">Count words from left to right. <strong>Note:</strong> Pure numbers (like "2024") are skipped in most systems.</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-8 p-5 bg-indigo-50/50 rounded-[2rem] border border-indigo-100/50 text-indigo-700 font-medium italic text-sm">
+          Formula: P[Page], L[Line], W[Word] → Extracted Letter
+        </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'sub'} onClose={() => setActiveModal(null)} title="Substitution Logic" icon={Repeat}>
+        <div className="space-y-8">
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full w-fit text-[10px] font-bold uppercase tracking-wider">Simple</div>
+            <h4 className="font-bold text-stone-800 text-lg">Caesar Cipher</h4>
+            <p className="text-sm">Every character shifts forward in the alphabet by a fixed offset. It's the foundation of modern cryptography concepts.</p>
+          </section>
+          <section className="space-y-3 border-t border-stone-50 pt-6">
+            <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full w-fit text-[10px] font-bold uppercase tracking-wider">Advanced</div>
+            <h4 className="font-bold text-stone-800 text-lg">Vigenère Cipher</h4>
+            <p className="text-sm">Uses a keyword to change the shift for every single letter, making it much harder to break than a simple Caesar shift.</p>
+          </section>
+        </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'trans'} onClose={() => setActiveModal(null)} title="Transposition Guide" icon={Hash}>
+        <p className="mb-6">Think of this as a "scrambler" rather than a "replacer". It changes the <strong>position</strong> of letters but keeps the letters themselves.</p>
+        <div className="p-6 bg-stone-50 rounded-[2rem] font-mono text-sm border border-stone-100 shadow-inner">
+          <div className="text-stone-400 mb-2">// Block Size: 4, Key: [2, 4, 1, 3]</div>
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-2"><span>Plain:</span> <span className="text-stone-800 font-bold">H E L P</span></div>
+            <div className="flex gap-2"><span>Scrambled:</span> <span className="text-amber-600 font-bold tracking-widest">L H P E</span></div>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={activeModal === 'trans'} onClose={() => setActiveModal(null)} title="Transposition Guide">
-        <p className="mb-4">Transposition rearranges positions without changing the letters themselves.</p>
-        <ol className="list-decimal list-inside space-y-3 ml-2">
-          <li><strong>Block Size:</strong> Determined by the number of digits in your key.</li>
-          <li><strong>Grouping:</strong> Break your message into blocks of that size.</li>
-          <li><strong>Permute:</strong> Move letters to the positions defined by the key.</li>
-        </ol>
-        <div className="mt-6 p-4 bg-amber-50 rounded-2xl font-mono text-xs border border-amber-100">
-          Example Key [2, 1, 4, 3]: <br/>
-          "HELP" → "EHPL" (H moved to 2nd position, E to 1st, etc.)
-        </div>
+      <Modal isOpen={activeModal === 'xor'} onClose={() => setActiveModal(null)} title="Bitwise XOR Method" icon={Binary}>
+        <p className="mb-6">The ultimate simple digital lock. It works at the binary level (0s and 1s).</p>
+        <ul className="space-y-4 text-sm">
+          <li className="flex items-start gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-stone-400 mt-2 shrink-0" />
+            <span>Different bits (0 vs 1) result in <strong>1</strong>.</span>
+          </li>
+          <li className="flex items-start gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-stone-400 mt-2 shrink-0" />
+            <span>Identical bits (0 vs 0) result in <strong>0</strong>.</span>
+          </li>
+          <li className="flex items-start gap-3 font-bold text-stone-800">
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 shrink-0" />
+            <span>Feature: XORing the result with the same key again perfectly unlocks the original text.</span>
+          </li>
+        </ul>
       </Modal>
 
-      <Modal isOpen={activeModal === 'xor'} onClose={() => setActiveModal(null)} title="Bitwise XOR Method">
-        <p className="mb-4">A Boolean function that compares two bits.</p>
-        <ol className="list-decimal list-inside space-y-3 ml-2">
-          <li><strong>Rule:</strong> Output <strong>1</strong> if bits are different, <strong>0</strong> if same.</li>
-          <li><strong>Binary:</strong> Convert your text and key into 8-bit binary streams.</li>
-          <li><strong>XOR:</strong> Apply the rule to each bit pair.</li>
-          <li><strong>Security:</strong> XORing twice with the same key returns the original data.</li>
-        </ol>
-      </Modal>
+      <div className="max-w-5xl mx-auto space-y-8 md:space-y-12">
+        <header className="space-y-6">
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="flex flex-col md:flex-row items-center justify-between gap-4"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-stone-900 rounded-2xl flex items-center justify-center shadow-xl shadow-stone-200">
+                <ShieldAlert className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-stone-900 uppercase">Cipher Studio</h1>
+                <p className="text-xs font-bold text-stone-400 uppercase tracking-[0.2em]">Manual & Automated Decryption Suite</p>
+              </div>
+            </div>
+            
+            <div className="bg-amber-100/50 border border-amber-200/50 px-5 py-3 rounded-2xl flex items-center gap-3 text-amber-900 text-xs font-bold shadow-sm">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>Cheating is not tolerated. Use at your own risk.</span>
+            </div>
+          </motion.div>
 
-      <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
-        <header className="text-center space-y-2">
-          <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-4 flex items-center justify-center gap-2 text-amber-800 text-xs md:text-sm font-medium">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>Cheating is not tolerated rather use this at your own risk for faster deciphering</span>
+          {/* Tab Navigation */}
+          <div className="flex flex-wrap items-center gap-2 p-2 bg-stone-200/30 rounded-[2rem] border border-stone-200/20 shadow-inner">
+            {[
+              { id: 'pdf', label: 'PDF Decoder', icon: FileText },
+              { id: 'substitution', label: 'Substitution', icon: Repeat },
+              { id: 'transposition', label: 'Transposition', icon: Hash },
+              { id: 'xor', label: 'XOR Bitwise', icon: Binary },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2.5 px-6 py-3 rounded-[1.5rem] text-sm font-bold transition-all duration-300 ${
+                  activeTab === tab.id 
+                  ? 'bg-white text-stone-900 shadow-xl shadow-stone-200/50 scale-[1.02]' 
+                  : 'text-stone-400 hover:text-stone-600 hover:bg-white/50'
+                }`}
+              >
+                <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-indigo-500' : ''}`} />
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-stone-800">Cipher Studio</h1>
-          <p className="text-sm md:text-base text-stone-500">A professional suite for coordinate decoding and classical ciphers.</p>
         </header>
 
-        {/* Tab Navigation */}
-        <div className="flex flex-wrap gap-2 p-1 bg-stone-200/50 rounded-2xl">
-          {[
-            { id: 'pdf', label: 'PDF Decoder', icon: FileText },
-            { id: 'substitution', label: 'Substitution', icon: Repeat },
-            { id: 'transposition', label: 'Transposition', icon: Hash },
-            { id: 'xor', label: 'XOR Cipher', icon: Binary },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                activeTab === tab.id 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-stone-500 hover:text-stone-700 hover:bg-stone-200'
-              }`}
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-12 space-y-8">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
             >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              {/* --- PDF DECODER TAB --- */}
+              {activeTab === 'pdf' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <button 
+                      onClick={() => setActiveModal('pdf')}
+                      className="group w-full p-6 bg-stone-900 text-white rounded-[2.5rem] flex items-center justify-between hover:bg-stone-800 transition-all shadow-2xl shadow-stone-300 active:scale-[0.98]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="bg-white/10 p-2 rounded-xl group-hover:bg-indigo-500 transition-colors">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <span className="font-bold text-lg">How to decode?</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 opacity-30 group-hover:translate-x-1 transition-transform" />
+                    </button>
 
-        {/* --- PDF DECODER TAB --- */}
-        {activeTab === 'pdf' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            <button 
-              onClick={() => setActiveModal('pdf')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-500 p-1.5 rounded-lg">
-                  <FileText className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-bold">Manual Explanation: Coordinate Method</span>
-              </div>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </button>
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-stone-100 space-y-8">
+                      <div className="space-y-4">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-stone-400">1. Setup Source</h2>
+                        
+                        <div className="grid grid-cols-1 gap-3">
+                          <label className="flex items-center gap-3 p-4 bg-stone-50 rounded-2xl border border-stone-100 cursor-pointer hover:border-indigo-200 transition-all">
+                            <input type="checkbox" checked={useOcr} onChange={(e) => setUseOcr(e.target.checked)} className="w-5 h-5 rounded-lg text-indigo-600 border-stone-300 focus:ring-indigo-500" />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-stone-700">OCR Mode</span>
+                              <span className="text-[10px] text-stone-400 uppercase font-bold tracking-tighter">Scanned Images & Photos</span>
+                            </div>
+                            <button onClick={(e) => {e.preventDefault(); setShowOcrHelp(!showOcrHelp)}} className="ml-auto p-1.5 hover:bg-stone-200 rounded-full"><HelpCircle className="w-4 h-4 text-stone-400" /></button>
+                          </label>
+                          {showOcrHelp && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="text-[11px] text-stone-500 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                              OCR allows the app to "see" text in pictures of books. It takes longer but works where normal mode fails.
+                            </motion.div>
+                          )}
+                          <label className="flex items-center gap-3 p-4 bg-stone-50 rounded-2xl border border-stone-100 cursor-pointer hover:border-indigo-200 transition-all">
+                            <input type="checkbox" checked={usePhysicalPage} onChange={(e) => setUsePhysicalPage(e.target.checked)} className="w-5 h-5 rounded-lg text-indigo-600 border-stone-300 focus:ring-indigo-500" />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-stone-700">Physical Indexing</span>
+                              <span className="text-[10px] text-stone-400 uppercase font-bold tracking-tighter">Literal PDF Count (1, 2, 3...)</span>
+                            </div>
+                          </label>
+                        </div>
 
-            <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">1. Document Setup</h2>
-                <div className="bg-blue-50 text-blue-800 p-3 md:p-4 rounded-xl text-sm flex gap-3 items-start">
-                  <Info className="w-5 h-5 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p><strong>Mode:</strong> {usePhysicalPage ? 'Physical PDF page count' : 'Printed page numbers'}. Numbers are automatically skipped when counting words.</p>
+                        <div className="relative group">
+                          <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-stone-200 border-dashed rounded-[2.5rem] cursor-pointer bg-stone-50/50 hover:bg-stone-50 hover:border-indigo-300 transition-all group-active:scale-[0.99]">
+                            <div className="p-4 bg-white rounded-2xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                              <Upload className="w-6 h-6 text-indigo-500" />
+                            </div>
+                            <p className="text-sm font-bold text-stone-600">Drop PDF here or <span className="text-indigo-600">Browse</span></p>
+                            <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+                          </label>
+                        </div>
+                        
+                        {loading && (
+                          <div className="flex items-center justify-center gap-3 p-4 bg-indigo-50 text-indigo-600 rounded-2xl text-sm font-bold animate-pulse">
+                            <RefreshCcw className="w-4 h-4 animate-spin" /> {progressMsg || 'Processing content...'}
+                          </div>
+                        )}
+                        {file && !loading && (
+                          <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                            <div className="p-2 bg-emerald-500 rounded-xl text-white shadow-lg shadow-emerald-200">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-black text-emerald-800 uppercase tracking-tighter">Ready</span>
+                              <span className="text-sm font-bold text-emerald-900 truncate">{file.name}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-stone-50 rounded-xl border border-stone-200">
-                  <div className="flex flex-col gap-2">
-                    <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none">
-                      <input type="checkbox" checked={useOcr} onChange={(e) => setUseOcr(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
-                      OCR Mode (Scanned Docs)
-                      <button onClick={() => setShowOcrHelp(!showOcrHelp)} className="p-1 hover:bg-stone-200 rounded-full"><HelpCircle className="w-4 h-4 text-stone-400" /></button>
-                    </label>
-                    {showOcrHelp && (
-                      <div className="text-[10px] md:text-xs text-stone-500 bg-white p-2 rounded-lg border border-stone-100 shadow-sm">
-                        OCR extracts text from images/scans. It is slower than normal mode.
+
+                  <div className="space-y-6">
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-stone-100 space-y-6">
+                      <div className="space-y-4">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-stone-400">2. Coordinate Input</h2>
+                        <textarea
+                          className="w-full h-48 p-6 bg-stone-50 border border-stone-100 rounded-[2rem] font-mono text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all placeholder:text-stone-300"
+                          placeholder="P10, L27, W2&#10;P6, L22, W1"
+                          value={pdfInput}
+                          onChange={(e) => setPdfInput(e.target.value)}
+                        />
+                        <button
+                          onClick={handlePdfDecipher}
+                          disabled={!pageMap || !pdfInput.trim()}
+                          className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 active:scale-[0.98] transition-all"
+                        >
+                          Decipher Message
+                        </button>
+                      </div>
+                    </div>
+
+                    {pdfResults.length > 0 && (
+                      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-stone-100 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-sm font-black uppercase tracking-widest text-stone-400">Results</h2>
+                          <CopyButton text={renderPdfDecipheredText()} />
+                        </div>
+                        <div className="space-y-3 font-mono text-sm max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                          {pdfResults.map((res, i) => (
+                            <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                              {res.type === 'text' ? <span className="font-bold text-stone-400 italic">"{res.original}"</span> : (
+                                <>
+                                  <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest min-w-[80px]">{res.original}</span>
+                                  <div className="flex items-center gap-3 ml-auto">
+                                    <span className="text-2xl font-black text-indigo-600">{res.letter}</span>
+                                    <span className="text-[10px] text-stone-400 uppercase font-bold tracking-tighter bg-white px-2 py-1 rounded-lg border border-stone-100">from "{res.word}"</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-8 bg-stone-900 rounded-[2rem] shadow-2xl shadow-stone-300 overflow-hidden relative group">
+                          <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500" />
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black text-stone-500 uppercase tracking-[0.3em]">Decoded Output</span>
+                          </div>
+                          <p className="text-3xl md:text-4xl font-black text-white tracking-[0.2em] break-words leading-relaxed drop-shadow-sm">{renderPdfDecipheredText() || "---"}</p>
+                        </div>
                       </div>
                     )}
                   </div>
-                  <label className="flex items-center gap-2 text-xs md:text-sm text-stone-700 cursor-pointer select-none">
-                    <input type="checkbox" checked={usePhysicalPage} onChange={(e) => setUsePhysicalPage(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
-                    Use Physical Page Index
-                  </label>
                 </div>
+              )}
 
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-stone-300 border-dashed rounded-xl cursor-pointer bg-stone-50 hover:bg-stone-100 transition-colors">
-                    <Upload className="w-8 h-8 mb-2 text-stone-400" />
-                    <p className="text-sm font-semibold text-stone-500">Tap to upload PDF</p>
-                    <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
-                  </label>
-                </div>
-                {loading && (
-                  <div className="flex items-center gap-2 text-sm text-indigo-600 animate-pulse">
-                    <RefreshCcw className="w-4 h-4 animate-spin" /> {progressMsg || 'Processing...'}
-                  </div>
-                )}
-                {file && !loading && <p className="text-sm text-emerald-600 font-medium truncate">✓ {file.name} loaded.</p>}
-              </div>
-
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">2. Coordinates</h2>
-                <textarea
-                  className="w-full h-40 p-4 border border-stone-200 rounded-xl font-mono text-sm resize-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="P10, L27, W2"
-                  value={pdfInput}
-                  onChange={(e) => setPdfInput(e.target.value)}
-                />
-                <button
-                  onClick={handlePdfDecipher}
-                  disabled={!pageMap || !pdfInput.trim()}
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-stone-300 text-white rounded-xl font-semibold shadow-sm"
-                >
-                  Decipher Coordinates
-                </button>
-              </div>
-            </div>
-
-            {pdfResults.length > 0 && (
-              <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-4">
-                <h2 className="text-lg font-semibold">Decoded Output</h2>
-                <div className="space-y-3 font-mono text-sm">
-                  {pdfResults.map((res, i) => (
-                    <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 p-2 rounded hover:bg-stone-50 border-b border-stone-50 last:border-0">
-                      {res.type === 'text' ? <span className="font-bold text-stone-800">{res.original}</span> : (
-                        <>
-                          <span className="text-stone-500 min-w-[100px]">{res.original}</span>
-                          <span className="text-emerald-600 font-bold text-xl">{res.letter}</span>
-                          <span className="text-stone-400 text-xs truncate">from "{res.word}"</span>
-                        </>
-                      )}
+              {/* --- SUBSTITUTION TAB --- */}
+              {activeTab === 'substitution' && (
+                <div className="space-y-8">
+                  <button 
+                    onClick={() => setActiveModal('sub')}
+                    className="group w-full p-6 bg-stone-900 text-white rounded-[2.5rem] flex items-center justify-between hover:bg-stone-800 transition-all shadow-2xl shadow-stone-300 active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white/10 p-2 rounded-xl group-hover:bg-indigo-500 transition-colors">
+                        <Repeat className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-lg">Substitution logic explained</span>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-6 p-4 md:p-6 bg-stone-100 rounded-2xl border border-stone-200">
-                  <p className="text-2xl md:text-3xl font-bold text-stone-800 tracking-widest break-words leading-relaxed">{renderPdfDecipheredText()}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                    <ChevronRight className="w-5 h-5 opacity-30 group-hover:translate-x-1 transition-transform" />
+                  </button>
 
-        {/* --- SUBSTITUTION TAB --- */}
-        {activeTab === 'substitution' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            <button 
-              onClick={() => setActiveModal('sub')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-500 p-1.5 rounded-lg">
-                  <Repeat className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-bold">Manual Explanation: Substitution</span>
-              </div>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </button>
+                  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-stone-100 space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                          <h3 className="font-black uppercase tracking-widest text-stone-400 text-xs">Mono: Caesar Shift</h3>
+                        </div>
+                        <div className="flex items-center gap-4 bg-stone-50 p-5 rounded-[1.5rem] border border-stone-100 shadow-inner">
+                          <span className="text-xs font-black text-stone-400 uppercase tracking-widest">Shift Amount</span>
+                          <input type="number" value={caesarShift} onChange={(e) => setCaesarShift(parseInt(e.target.value, 10) || 0)} className="w-20 p-3 bg-white border border-stone-200 rounded-xl text-center font-black text-lg focus:ring-4 focus:ring-indigo-500/10 outline-none" />
+                        </div>
+                        <p className="text-xs font-bold text-stone-400 italic bg-stone-50/50 p-3 rounded-xl border border-stone-100/50 uppercase tracking-tighter">Shift {caesarShift}: MOM → {ciphers.caesarShift('MOM', caesarShift)}</p>
+                      </div>
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+                          <h3 className="font-black uppercase tracking-widest text-stone-400 text-xs">Poly: Vigenère</h3>
+                        </div>
+                        <div className="flex flex-col gap-4">
+                          <div className="relative">
+                            <input type="text" placeholder="SECRET KEY" value={vigenereKey} onChange={(e) => setVigenereKey(e.target.value.toUpperCase())} className="w-full p-4 pl-12 bg-stone-50 border border-stone-100 rounded-[1.5rem] font-black text-sm uppercase tracking-widest focus:ring-4 focus:ring-indigo-500/10 outline-none" />
+                            <Settings className="absolute left-4 top-4 w-5 h-5 text-stone-300" />
+                          </div>
+                          <label className="flex items-center gap-3 px-2 cursor-pointer group">
+                            <input type="checkbox" checked={vigenereDecrypt} onChange={(e) => setVigenereDecrypt(e.target.checked)} className="w-5 h-5 rounded-lg text-indigo-600 focus:ring-indigo-500" />
+                            <span className="text-xs font-black text-stone-500 uppercase tracking-widest group-hover:text-stone-800 transition-colors">Reverse Mode (Decrypt)</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
 
-            <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="font-bold flex items-center gap-2 text-stone-700">Monoalphabetic (Caesar)</h3>
-                  <div className="flex items-center gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                    <span className="text-xs font-bold text-stone-500 uppercase">Shift:</span>
-                    <input type="number" value={caesarShift} onChange={(e) => setCaesarShift(parseInt(e.target.value, 10) || 0)} className="w-16 p-1 border rounded text-center font-mono" />
-                  </div>
-                  <p className="text-xs text-stone-500 leading-relaxed italic">Example (Shift 3): M becomes P, O becomes R. MOM → PRP.</p>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="font-bold flex items-center gap-2 text-stone-700">Polyalphabetic (Vigenère)</h3>
-                  <div className="flex flex-col gap-2">
-                    <input type="text" placeholder="Keyword (e.g. ITALY)" value={vigenereKey} onChange={(e) => setVigenereKey(e.target.value.toUpperCase())} className="w-full p-2 border rounded font-mono text-sm" />
-                    <label className="flex items-center gap-2 text-xs text-stone-600 cursor-pointer">
-                      <input type="checkbox" checked={vigenereDecrypt} onChange={(e) => setVigenereDecrypt(e.target.checked)} />
-                      Decrypt Mode
-                    </label>
-                  </div>
-                  <p className="text-xs text-stone-500 leading-relaxed italic">Uses a repeated keyword to select different alphabet shifts for each letter.</p>
-                </div>
-              </div>
+                    <div className="space-y-4 pt-8 border-t border-stone-50">
+                      <h2 className="text-xs font-black uppercase tracking-widest text-stone-400">Message to Process</h2>
+                      <textarea
+                        className="w-full h-40 p-6 bg-stone-50 border border-stone-100 rounded-[2rem] font-mono text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all placeholder:text-stone-300"
+                        placeholder="Type your plaintext or ciphertext here..."
+                        value={subInput}
+                        onChange={(e) => setSubInput(e.target.value)}
+                      />
+                    </div>
 
-              <div className="space-y-4 pt-4 border-t border-stone-100">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-stone-400">Input Text</h2>
-                <textarea
-                  className="w-full h-32 p-4 border border-stone-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Enter message to encrypt or decrypt..."
-                  value={subInput}
-                  onChange={(e) => setSubInput(e.target.value)}
-                />
-              </div>
-
-              {subInput && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <h4 className="text-[10px] font-bold text-emerald-700 uppercase mb-1">Caesar Result</h4>
-                    <p className="text-lg font-bold text-emerald-900 break-all font-mono">{ciphers.caesarShift(subInput, caesarShift)}</p>
-                  </div>
-                  <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                    <h4 className="text-[10px] font-bold text-indigo-700 uppercase mb-1">Vigenère Result</h4>
-                    <p className="text-lg font-bold text-indigo-900 break-all font-mono">{ciphers.vigenereCipher(subInput, vigenereKey, vigenereDecrypt)}</p>
+                    {subInput && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 relative group">
+                          <div className="flex justify-between items-start mb-4">
+                            <h4 className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.2em]">Caesar Result</h4>
+                            <CopyButton text={ciphers.caesarShift(subInput, caesarShift)} />
+                          </div>
+                          <p className="text-xl font-black text-emerald-900 break-all font-mono leading-relaxed tracking-widest">{ciphers.caesarShift(subInput, caesarShift)}</p>
+                        </div>
+                        <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 relative group">
+                          <div className="flex justify-between items-start mb-4">
+                            <h4 className="text-[10px] font-black text-indigo-700 uppercase tracking-[0.2em]">Vigenère Result</h4>
+                            <CopyButton text={ciphers.vigenereCipher(subInput, vigenereKey, vigenereDecrypt)} />
+                          </div>
+                          <p className="text-xl font-black text-indigo-900 break-all font-mono leading-relaxed tracking-widest">{ciphers.vigenereCipher(subInput, vigenereKey, vigenereDecrypt)}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
 
-        {/* --- TRANSPOSITION TAB --- */}
-        {activeTab === 'transposition' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            <button 
-              onClick={() => setActiveModal('trans')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-500 p-1.5 rounded-lg">
-                  <Hash className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-bold">Manual Explanation: Transposition</span>
-              </div>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </button>
+              {/* --- TRANSPOSITION TAB --- */}
+              {activeTab === 'transposition' && (
+                <div className="space-y-8">
+                  <button 
+                    onClick={() => setActiveModal('trans')}
+                    className="group w-full p-6 bg-stone-900 text-white rounded-[2.5rem] flex items-center justify-between hover:bg-stone-800 transition-all shadow-2xl shadow-stone-300 active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white/10 p-2 rounded-xl group-hover:bg-indigo-500 transition-colors">
+                        <Hash className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-lg">Position-based scrambling</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 opacity-30 group-hover:translate-x-1 transition-transform" />
+                  </button>
 
-            <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
-              <div className="space-y-4">
-                <h3 className="font-bold text-stone-700">Permutation Key</h3>
-                <div className="bg-stone-50 p-4 rounded-xl text-sm border border-stone-100 space-y-2">
-                  <p className="text-stone-600 italic leading-relaxed text-xs">Arranges positions within blocks. Example: "2, 1, 4, 3" swaps every two letters.</p>
-                  <input type="text" value={transKey} onChange={(e) => setTransKey(e.target.value)} className="w-full p-3 border rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 1, 4, 2, 8, 3, 5, 7, 6" />
-                </div>
-              </div>
-              <div className="space-y-4 pt-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-stone-400">Input Text</h2>
-                <textarea
-                  className="w-full h-32 p-4 border border-stone-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  placeholder="Enter text to scramble..."
-                  value={transInput}
-                  onChange={(e) => setTransInput(e.target.value)}
-                />
-              </div>
-              {transInput && (
-                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                  <h4 className="text-[10px] font-bold text-amber-700 uppercase mb-1 tracking-widest">Transposed Result</h4>
-                  <p className="text-lg font-bold text-amber-900 break-all font-mono whitespace-pre leading-relaxed">{ciphers.transpositionCipher(transInput, transKey)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-stone-100 space-y-8">
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
+                        <h3 className="font-black uppercase tracking-widest text-stone-400 text-xs">Permutation Pattern</h3>
+                      </div>
+                      <div className="relative">
+                        <input type="text" value={transKey} onChange={(e) => setTransKey(e.target.value)} className="w-full p-5 pl-12 bg-stone-50 border border-stone-100 rounded-[1.5rem] font-mono text-lg font-black focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="e.g. 1, 4, 2, 3" />
+                        <Settings className="absolute left-4 top-5 w-6 h-6 text-stone-300" />
+                      </div>
+                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-2">Example: "2, 1, 4, 3" swaps every pair of letters.</p>
+                    </div>
+                    
+                    <div className="space-y-4 pt-4 border-t border-stone-50">
+                      <h2 className="text-xs font-black uppercase tracking-widest text-stone-400">Source Text</h2>
+                      <textarea
+                        className="w-full h-40 p-6 bg-stone-50 border border-stone-100 rounded-[2rem] font-mono text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all placeholder:text-stone-300"
+                        placeholder="Enter text to scramble..."
+                        value={transInput}
+                        onChange={(e) => setTransInput(e.target.value)}
+                      />
+                    </div>
 
-        {/* --- XOR TAB --- */}
-        {activeTab === 'xor' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-            <button 
-              onClick={() => setActiveModal('xor')}
-              className="w-full p-4 bg-stone-800 text-white rounded-2xl flex items-center justify-between hover:bg-stone-700 transition-colors shadow-lg active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-500 p-1.5 rounded-lg">
-                  <Binary className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-bold">Manual Explanation: XOR Cipher</span>
-              </div>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </button>
-
-            <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
-              <div className="space-y-4">
-                <h3 className="font-bold text-stone-700">XOR Parameters</h3>
-                <div className="bg-stone-50 p-4 rounded-xl text-sm border border-stone-100 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-stone-500 uppercase shrink-0">Key (String):</span>
-                    <input type="text" value={xorKey} onChange={(e) => setXorKey(e.target.value)} className="w-full p-3 border rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-                  </div>
-                  <p className="text-xs text-stone-500 leading-relaxed italic">Compares bits: 1 if different, 0 if same. XORing twice with the same key recovers original text.</p>
-                </div>
-              </div>
-              <div className="space-y-4 pt-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-stone-400">Input Text</h2>
-                <textarea
-                  className="w-full h-32 p-4 border border-stone-200 rounded-xl font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  placeholder="Enter message..."
-                  value={xorInput}
-                  onChange={(e) => setXorInput(e.target.value)}
-                />
-              </div>
-              {xorInput && (
-                <div className="space-y-4">
-                  <div className="p-5 bg-stone-900 text-stone-100 rounded-2xl border border-stone-800 shadow-xl overflow-hidden">
-                    <h4 className="text-[10px] font-bold text-stone-400 uppercase mb-2 tracking-widest">Binary Bitstream</h4>
-                    <p className="text-xs font-mono break-all leading-relaxed opacity-80">{ciphers.xorCipher(xorInput, xorKey).binary}</p>
-                    <h4 className="text-[10px] font-bold text-stone-400 uppercase mt-5 mb-2 tracking-widest">Hexadecimal View</h4>
-                    <p className="text-xs font-mono break-all leading-relaxed opacity-80">{ciphers.xorCipher(xorInput, xorKey).hex}</p>
-                  </div>
-                  <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-100">
-                    <h4 className="text-[10px] font-bold text-emerald-700 uppercase mb-1 tracking-widest">XOR Result (Text/ASCII)</h4>
-                    <p className="text-xl font-bold text-emerald-900 break-all font-mono italic">
-                      {ciphers.xorCipher(xorInput, xorKey).text || <span className="text-stone-400 font-normal text-sm">(Non-printable result)</span>}
-                    </p>
+                    {transInput && (
+                      <div className="p-8 bg-amber-50 rounded-[2rem] border border-amber-100 relative group overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-200/20 rounded-full -mr-12 -mt-12 blur-2xl" />
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                          <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-[0.3em]">Transposed Result</h4>
+                          <CopyButton text={ciphers.transpositionCipher(transInput, transKey)} />
+                        </div>
+                        <p className="text-2xl font-black text-amber-900 break-all font-mono whitespace-pre relative z-10 leading-loose tracking-widest">
+                          {ciphers.transpositionCipher(transInput, transKey)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-            </div>
+
+              {/* --- XOR TAB --- */}
+              {activeTab === 'xor' && (
+                <div className="space-y-8">
+                  <button 
+                    onClick={() => setActiveModal('xor')}
+                    className="group w-full p-6 bg-stone-900 text-white rounded-[2.5rem] flex items-center justify-between hover:bg-stone-800 transition-all shadow-2xl shadow-stone-300 active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white/10 p-2 rounded-xl group-hover:bg-indigo-500 transition-colors">
+                        <Binary className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold text-lg">Bitwise logic explained</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 opacity-30 group-hover:translate-x-1 transition-transform" />
+                  </button>
+
+                  <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-stone-100 space-y-10">
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-stone-900 rounded-full" />
+                        <h3 className="font-black uppercase tracking-widest text-stone-400 text-xs">Binary Parameters</h3>
+                      </div>
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                          <input type="text" value={xorKey} onChange={(e) => setXorKey(e.target.value)} className="w-full p-5 pl-14 bg-stone-50 border border-stone-100 rounded-[1.5rem] font-bold text-lg focus:ring-4 focus:ring-indigo-500/10 outline-none" placeholder="Secret Key (String)" />
+                          <ShieldAlert className="absolute left-5 top-5 w-6 h-6 text-stone-300" />
+                        </div>
+                        <div className="bg-stone-50 px-6 py-5 rounded-[1.5rem] border border-stone-100 flex items-center justify-center">
+                          <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Type: UTF-8 String</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-stone-50">
+                      <h2 className="text-xs font-black uppercase tracking-widest text-stone-400">Source Bitstream</h2>
+                      <textarea
+                        className="w-full h-40 p-6 bg-stone-50 border border-stone-100 rounded-[2rem] font-mono text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all placeholder:text-stone-300"
+                        placeholder="Enter message to XOR..."
+                        value={xorInput}
+                        onChange={(e) => setXorInput(e.target.value)}
+                      />
+                    </div>
+
+                    {xorInput && (
+                      <div className="space-y-6">
+                        <div className="p-8 bg-stone-900 text-stone-100 rounded-[2.5rem] shadow-2xl border border-stone-800 relative overflow-hidden group">
+                          <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
+                          <div className="flex justify-between items-start mb-6 relative z-10">
+                            <div className="space-y-1">
+                              <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-[0.4em]">Raw Binary Bitstream</h4>
+                              <div className="h-0.5 w-12 bg-indigo-500 rounded-full" />
+                            </div>
+                            <CopyButton text={ciphers.xorCipher(xorInput, xorKey).binary} />
+                          </div>
+                          <p className="text-[11px] font-mono break-all leading-loose opacity-70 selection:bg-white selection:text-black relative z-10 tracking-widest">{ciphers.xorCipher(xorInput, xorKey).binary}</p>
+                          
+                          <div className="mt-10 space-y-1 relative z-10">
+                            <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-[0.4em]">Hexadecimal Map</h4>
+                            <p className="text-xs font-mono break-all leading-relaxed opacity-70 tracking-[0.2em]">{ciphers.xorCipher(xorInput, xorKey).hex}</p>
+                          </div>
+                        </div>
+
+                        <div className="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 shadow-sm relative group">
+                          <div className="flex justify-between items-start mb-4">
+                            <h4 className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.3em]">XOR Result (ASCII)</h4>
+                            <CopyButton text={ciphers.xorCipher(xorInput, xorKey).text} />
+                          </div>
+                          <p className="text-2xl font-black text-emerald-900 break-all font-mono italic tracking-widest">
+                            {ciphers.xorCipher(xorInput, xorKey).text || <span className="text-stone-300 font-normal text-sm tracking-normal">(Non-printable result)</span>}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </motion.div>
           </div>
-        )}
+        </main>
       </div>
     </div>
   );
